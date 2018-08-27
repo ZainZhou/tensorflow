@@ -26,8 +26,7 @@ tf.flags.DEFINE_integer('num_epochs',200,'Number of epochs')
 tf.flags.DEFINE_integer('evaluate_every',100,'evaluate_every')
 tf.flags.DEFINE_integer('checkpoint_every',100,'Saving')
 
-FLAGS = tf.flags.FLAGS
+FLAGS = tf.app.flags.FLAGS
 FLAGS._parse_flags()
-print('/nParameters:')
-for attr,value in sorted(FLAGS._flags.items()):
-    print('%a:%v'%(attr,value))
+for attr,value in sorted(FLAGS.__flags.items()):
+    print(('{} = {}').format(attr.upper(),value))
