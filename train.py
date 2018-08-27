@@ -3,7 +3,7 @@ import numpy as np
 import os
 import time
 import datetime
-import data_helper
+import data_helpers
 # from text_cnn import TextCNN
 from tensorflow.contrib import learn
 
@@ -30,3 +30,15 @@ FLAGS = tf.app.flags.FLAGS
 FLAGS._parse_flags()
 for attr,value in sorted(FLAGS.__flags.items()):
     print(('{} = {}').format(attr.upper(),value))
+
+# Load data
+x_text,y = data_helpers.load_data_and_labels(FLAGS.positive_data_file,FLAGS.negative_data_file)
+
+max_document_length = max(len(x.split(' ')) for x in x_text)
+vocab_processor = learn.preprocessing.VocabularyProcessor(max_document_length)
+x = np.array(vocab_processor.fit_transform(x_text))
+
+np.random.seed(10)
+shuffle_index = np.random.permutation(np.arange(len(y)))
+x_shuffled = x[shuffle_index]
+y_shuffled = y[shuffle_index]
