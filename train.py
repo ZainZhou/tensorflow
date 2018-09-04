@@ -26,6 +26,7 @@ tf.flags.DEFINE_integer('batch_size',128,'Batch size')
 tf.flags.DEFINE_integer('num_epochs',200,'Number of epochs')
 tf.flags.DEFINE_integer('evaluate_every',100,'evaluate_every')
 tf.flags.DEFINE_integer('checkpoint_every',100,'Saving')
+tf.flags.DEFINE_integer('num_checkpoints',5,'Saving')
 
 FLAGS = tf.app.flags.FLAGS
 FLAGS._parse_flags()
@@ -34,7 +35,7 @@ for attr,value in sorted(FLAGS.__flags.items()):
 
 # Load data
 x_text,y = data_helpers.load_data_and_labels(FLAGS.positive_data_file,FLAGS.negative_data_file)
-
+print(x_text)
 max_document_length = max(len(x.split(' ')) for x in x_text)
 vocab_processor = learn.preprocessing.VocabularyProcessor(max_document_length)
 x = np.array(vocab_processor.fit_transform(x_text))
@@ -67,3 +68,49 @@ with tf.Graph().as_default():
             num_filters = FLAGS.num_filters,
             l2_reg_lamdba = FLAGS.L2_reg_lambda
         )
+    global_step = tf.Variable(0,name = 'global_step')
+    optimizer = tf.train.AdamOptimizer(1e-3)
+    grads_and_vars = optimizer.compute_gradients(cnn.loss)
+    train_op = optimizer.apply_gradients(grads_and_vars,global_step)
+
+saver = tf.train.Saver(tf.global_variables(),max_to_keep=FLAGS.num_checkpoints)
+sess.run(tf.global_variables_initializer())
+
+batches = data_helpers.batch_iter(list(zip(x_train,y_train)),FLAGS.batch_size,FLAGS.num_epochs)
+
+def train_step(x_batch,y_batch):
+    feed_dic = {
+        cnn.input_x : x_batch,
+        cnn.input_y : y_batch,
+        cnn.dropout_keep_prob : FLAGS.dropout
+    }
+    _, step, loss, accuracy = sess.run(
+        [train_op,global_step,cnn.loss,cnn.accuracy],
+        feed_dic
+    )
+    time_str = datetime.datetime.now().isoformat()
+    print(('{}:step {},loss{:g},acc{:g}').format(time_str,step,loss,accuracy))
+
+def dev_step(x_batch,y_batch):
+    feed_dic = {
+        cnn.input_x : x_batch,
+        cnn.input_y : y_batch,
+        cnn.dropout_keep_prob : 1.0
+    }
+    _, step, loss, accuracy = sess.run(
+        [train_op,global_step,cnn.loss,cnn.accuracy],
+        feed_dic
+    )
+    time_str = datetime.datetime.now().isoformat()
+    print(('{}:step {},loss{:g},acc{:g}').format(time_str,step,loss,accuracy))
+
+for batch in batches:
+    x_batch,y_batch = zip(*batch)
+    train_step(x_batch,y_batch)
+    current_step = tf.train.global_step(sess,global_step)
+    if current_step % FLAGS.evaluate_every == 0 :
+        print('\n evaluation_every')
+        dev_step(x_dev,y_dev)
+    if current_step % FLAGS.checkpoint_every == 0 :
+        path = saver.save(sess,'./model',global_step = current_step)
+        print('model saved')
