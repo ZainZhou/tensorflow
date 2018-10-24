@@ -3,15 +3,15 @@ import numpy as np
 import os
 import time
 import datetime
-import data_helpers
-from text_cnn import TextCNN
+from cnn import data_helpers
+from cnn.text_cnn import TextCNN
 from tensorflow.contrib import learn
 
 # Params
 # Data loading params
 tf.flags.DEFINE_float('dev_sample_percentage',0.15,'percentage of the training data to use for validation')
-tf.flags.DEFINE_string('positive_data_file','./data/rt-polaritydata/rt-polarity.pos','Data source for the positive')
-tf.flags.DEFINE_string('negative_data_file','./data/rt-polaritydata/rt-polarity.neg','Data source for the negative')
+tf.flags.DEFINE_string('positive_data_file',"/home/zz/tensorflow/cnn/data/rt-polaritydata/rt-polarity.pos",'Data source for the positive')
+tf.flags.DEFINE_string('negative_data_file',"/home/zz/tensorflow/cnn/data/rt-polaritydata/rt-polarity.neg",'Data source for the negative')
 tf.flags.DEFINE_boolean('allow_soft_placement',True,'allow_soft_placement')
 tf.flags.DEFINE_boolean('log_device_placement',True,'log_soft_placement')
 # Model Hparams
@@ -29,12 +29,12 @@ tf.flags.DEFINE_integer('checkpoint_every',100,'Saving')
 tf.flags.DEFINE_integer('num_checkpoints',5,'Saving')
 
 FLAGS = tf.app.flags.FLAGS
-FLAGS._parse_flags()
-for attr,value in sorted(FLAGS.__flags.items()):
+FLAGS.flag_values_dict()
+for attr,value in sorted(FLAGS.flag_values_dict().items()):
     print(('{} = {}').format(attr.upper(),value))
 
 # Load data
-x_text,y = data_helpers.load_data_and_labels(FLAGS.positive_data_file,FLAGS.negative_data_file)
+x_text,y = data_helpers.load_data_and_labels(FLAGS.positive_data_file, FLAGS.negative_data_file)
 max_document_length = max(len(x.split(' ')) for x in x_text)
 vocab_processor = learn.preprocessing.VocabularyProcessor(max_document_length)
 x = np.array(list(vocab_processor.fit_transform(x_text)))
@@ -103,7 +103,7 @@ with tf.Graph().as_default():
         vocab_processor.save(os.path.join(out_dir,'vocab'))
 
         sess.run(tf.global_variables_initializer())
-        batches = data_helpers.batch_iter(list(zip(x_train,y_train)),FLAGS.batch_size,FLAGS.num_epochs)
+        batches = data_helpers.batch_iter(list(zip(x_train, y_train)), FLAGS.batch_size, FLAGS.num_epochs)
         def train_step(x_batch,y_batch):
             feed_dic = {
                 cnn.input_x : x_batch,
@@ -138,5 +138,5 @@ with tf.Graph().as_default():
                 print('\n evaluation_every')
                 dev_step(x_dev,y_dev)
             if current_step % FLAGS.checkpoint_every == 0 :
-                path = saver.save(sess,'./model',global_step = current_step)
+                path = saver.save(sess,'/home/zz/tensorflow/cnn/model/',global_step = current_step)
                 print('model saved')
